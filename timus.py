@@ -1,13 +1,18 @@
 #!/usr/bin/env python2.7
 # coding: utf-8
 
+from __future__ import print_function
 import sys
 import time
-
-import requests
+import httplib
 import lxml.html
 
+import requests
+import progress_bar
+
 WAIT_TIME = 0.3
+MAX_SUBMIT_ATTEMPTS = 5
+SUBMIT_ATTEMPT_WAIT_TIME = 3
 
 submit_url = 'http://acm.timus.ru/submit.aspx'
 status_url = 'http://acm.timus.ru/status.aspx'
@@ -65,10 +70,15 @@ class color:
 
 def submit(payload):
     response = requests.post(submit_url, payload, allow_redirects=False)
-    submit_id = response.headers['x-submitid']
-    author_id = response.cookies.get('AuthorID')
-    session_id = response.cookies.get('ASP.NET_SessionId')
-    return submit_id, author_id, session_id
+    if response.status_code != httplib.FOUND:
+        return None
+
+    submit_status = dict()
+    submit_status['author_id']  = response.cookies.get('AuthorID')
+    submit_status['session_id'] = response.cookies.get('ASP.NET_SessionId')
+    submit_status['submit_id'] =  response.headers['x-submitid']
+
+    return submit_status
 
 
 def get_status(submit_id):
@@ -92,6 +102,13 @@ def get_status(submit_id):
     status['runtime'] = status_element.find_class('runtime')[0].text_content()
     status['memory'] = status_element.find_class('memory')[0].text_content()
 
+    if status['verdict'] in processing_verdicts:
+        status['status'] = 'process'
+    elif status['verdict'] == accepted_verdict:
+        status['status'] = 'ok'
+    else:
+        status['status'] = 'fail'
+
     return status
 
 def get_compilation_error(submit_id, session_id):
@@ -99,20 +116,34 @@ def get_compilation_error(submit_id, session_id):
     response = requests.get(url, cookies={'ASP.NET_SessionId': session_id})
     return response.content
 
-
-
 processing_verdicts = ['Compiling', 'Running', 'Waiting']
 accepted_verdict = 'Accepted'
 
-def inline_print(text):
-    if text in processing_verdicts:
-        text = color.process(text)
-    elif text == accepted_verdict:
-        text = color.ok(text)
-    else:
-        text = color.fail(text)
-    sys.stdout.write(text + ' '*30 + "\r")
-    sys.stdout.flush()
+def try_submit(submit_payload):
+    submit_attempts = 0
+    while submit_attempts < MAX_SUBMIT_ATTEMPTS:
+        submit_status = submit(submit_payload)
+        submit_attempts += 1
+        if submit_status is not None:
+            return submit_status
+        time.sleep(SUBMIT_ATTEMPT_WAIT_TIME)
+    return None
+
+def process_verdict(progress, submit_id):
+    while True:
+        start_time = time.time()
+
+        status = get_status(submit_id)
+        progress.update(status)
+
+        sleep_time = WAIT_TIME - (time.time() - start_time)
+        if (sleep_time < 0):
+            sleep_time = 0
+        time.sleep(sleep_time)
+
+        if status['verdict'] not in processing_verdicts:
+            return status['verdict']
+
 
 def main():
     with open(sys.argv[1]) as source_file:
@@ -120,20 +151,23 @@ def main():
 
     submit_payload['Source'] = source
 
-    submit_id, author_id, session_id = submit(submit_payload)
+    progress = progress_bar.ProgressBar()
 
-    status = get_status(submit_id)
-    verdict = status['verdict']
-    inline_print(verdict)
-    
-    while verdict in processing_verdicts:
-        time.sleep(WAIT_TIME)
-        verdict = get_status(submit_id)['verdict']
-        inline_print(verdict)
-    print
+    wait_status = {'status': 'wait'}
+    progress.update(wait_status)
 
-    if verdict == 'Compilation error':
-        print get_compilation_error(submit_id, session_id)
+    submit_status = try_submit(submit_payload)
+    if submit_status is None:
+        submit_fail_status = {'status': 'submit_fail'}
+        progress.update(submit_fail_status)
+        return
+
+    end_verdict = process_verdict(progress, submit_status['submit_id'])
+
+    print()
+
+    if end_verdict == 'Compilation error':
+        print(get_compilation_error(submit_status['submit_id'], submit_status['session_id']))
 
 
 if __name__ == '__main__':
