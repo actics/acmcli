@@ -138,12 +138,12 @@ class SubmitPayload(object):
         return languages
 
     def __init__(self):
-        action = 'submit'
-        space_id = '1'
-        judge_id = ''
-        language = 0
-        problem_num = 0
-        source = ''
+        self.action = 'submit'
+        self.space_id = '1'
+        self.judge_id = ''
+        self.language = 0
+        self.problem_num = 0
+        self.source = ''
 
     @property
     def dict(self):
@@ -155,6 +155,4 @@ class SubmitPayload(object):
             'ProblemNum': self.problem_num,
             'Source': self.source,
         }
-
-
 
