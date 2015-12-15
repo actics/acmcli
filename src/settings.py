@@ -4,8 +4,6 @@ import locale
 import ConfigParser
 import argparse
 
-from timus_api import SubmitPayload
-
 
 def _parse_args():
     parser = argparse.ArgumentParser()
@@ -22,17 +20,19 @@ def _parse_args():
 
 
 class Config(object):
+    _SECTION = 'sect'
+
     class FakeSectionFp(object):
         def __init__(self, fp):
             self.fp = fp
-            self.sechead = '[sect]\n'
+            self.section_name = '{0}\n'.format(self._SECTION)
 
         def readline(self):
-            if self.sechead:
+            if self.section_name:
                 try:
-                    return self.sechead
+                    return self.section_name
                 finally:
-                    self.sechead = None
+                    self.section_name = None
             else:
                 return self.fp.readline()
 
@@ -46,63 +46,43 @@ class Config(object):
     @classmethod
     def read(cls, config_name):
         parser = ConfigParser.ConfigParser()
-        with open(config_name, 'r') as fp:
-            parser.readfp(cls.FakeSectionFp(fp))
+        try:
+            with open(config_name, 'r') as fp:
+                parser.readfp(cls.FakeSectionFp(fp))
+        except IOError:
+            pass
 
         config = cls()
-        if parser.has_option('sect', 'judge_id'):
-            config.judge_id = parser.get('sect', 'judge_id')
-        if parser.has_option('sect', 'language'):
-            config.language = parser.get('sect', 'language').lower()
-        if parser.has_option('sect', 'locale'):
-            config.locale = parser.get('sect', 'locale').lower()
-        if parser.has_option('sect', 'show_tags'):
-            config.show_tags = parser.getboolean('sect', 'show_tags')
-        if parser.has_option('sect', 'default_source_file'):
-            config.default_source_file = parser.get('sect', 'default_source_file')
+        if parser.has_option(cls._SECTION, 'judge_id'):
+            config.judge_id = parser.get(cls._SECTION, 'judge_id')
+        if parser.has_option(cls._SECTION, 'language'):
+            config.language = parser.get(cls._SECTION, 'language').lower()
+        if parser.has_option(cls._SECTION, 'locale'):
+            config.locale = parser.get(cls._SECTION, 'locale').lower()
+        if parser.has_option(cls._SECTION, 'show_tags'):
+            config.show_tags = parser.getboolean(cls._SECTION, 'show_tags')
+        if parser.has_option(cls._SECTION, 'default_source_file'):
+            config.default_source_file = parser.get(cls._SECTION, 'default_source_file')
         return config
 
 
 class Settings(object):
     _CONFIG_NAME = '~/.config/timus.conf'
-    _language_map = {
-        'c': 'gcc',
-        'c++': 'g++',
-        'python': 'python 2.7',
-        'python2': 'python 2.7',
-        'python3': 'python 3',
-    }
 
     def __init__(self):
         self.action = None
         self.problem_number = ''
         self.judge_id = ''
+        self.author_id = ''
         self.language = ''
         self.locale = ''
         self.show_tags = False
         self.source_file = ''
-        self.languages = {}
 
-    def _convert_locale(self):
+    def convert_locale(self):
         if self.locale is None:
             self.locale = locale.getdefaultlocale()[0]
         self.locale = 'Russian' if self.locale.lower().startswith('ru') else 'English'
-
-    def _convert_language(self):
-        lang = self.language.lower()
-        if self._language_map.has_key(lang):
-            lang = self._language_map[lang]
-
-        for compiler in self.languages.iterkeys():
-            if lang in compiler.lower():
-                self.language = self.languages[compiler]
-                return
-
-        error_msg = 'Can\'t find compilers for language {0}. ' + \
-            'You can use one of this names: {1}'
-        names = reduce(lambda res, x: res + x + ', ', self.languages.iterkeys(), '')
-        names = names[:-2]
-        raise Exception(error_msg.format(lang, names))
 
     @classmethod
     def read(cls):
@@ -112,7 +92,7 @@ class Settings(object):
         config = Config.read(config_name)
 
         settings = Settings()
-        settings.action = args.action
+        settings.action = args.action.lower()
         settings.problem_number = args.problem_number
         settings.judge_id = args.judge_id if args.judge_id is not None else config.judge_id
         settings.language = args.language if args.language is not None else config.language
@@ -120,9 +100,8 @@ class Settings(object):
         settings.show_tags = args.show_tags if args.show_tags is not None else config.show_tags
         settings.source = args.source if args.source is not None else config.default_source_file
 
-        settings.languages = SubmitPayload.get_languages()
-        settings._convert_locale()
-        settings._convert_language()
+        settings.convert_locale()
+
         return settings
 
 

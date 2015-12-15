@@ -1,8 +1,41 @@
 # coding: utf-8
 
-import requests
 import lxml.html
 from html2text import html2text
+
+from structs import SubmitStatus, Problem
+
+
+def parse_submit_status(html):
+    tree = lxml.html.fromstring(html)
+
+    status_element = tree.find_class('even')[0]
+    verdict_element = status_element.find_class('verdict_rj')
+    if len(verdict_element) == 0:
+        verdict_element = status_element.find_class('verdict_wt')
+    if len(verdict_element) == 0:
+        verdict_element = status_element.find_class('verdict_ac')
+
+    status = SubmitStatus()
+    status.verdict = verdict_element[0].text_content()
+    status.submit_id = status_element.find_class('id')[0].text_content()
+    status.language = status_element.find_class('language')[0].text_content()
+    status.problem = status_element.find_class('problem')[0].text_content()
+    status.test = status_element.find_class('test')[0].text_content()
+    status.runtime = status_element.find_class('runtime')[0].text_content()
+    status.memory = status_element.find_class('memory')[0].text_content()
+    return status
+
+
+def parse_languages(html):
+        tree = lxml.html.fromstring(html)
+        select_tag = tree.xpath('//select')[0]
+        option_tags = select_tag.xpath('./option')
+
+        languages = dict()
+        for tag in option_tags:
+            languages[tag.text] = tag.attrib['value']
+        return languages
 
 
 class ProblemParser(object):
@@ -85,34 +118,4 @@ class ProblemParser(object):
         cls._set_links(tree, problem)
         cls._set_text_and_samples(tree, problem)
 
-        return problem
-
-
-class Problem(object):
-    _problem_url_pattern = 'http://acm.timus.ru/problem.aspx?num={0}'
-
-    def __init__(self):
-        self.number = 0
-        self.title = ''
-        self.time_limit = ''
-        self.memory_limit = ''
-        self.text = ''
-        self.sample_input = []
-        self.sample_output = []
-        self.author = ''
-        self.source = ''
-        self.tags = []
-        self.difficulty = 0
-        self.is_accepted = False
-        self.discussion_count = 0
-        self.submission_count = 0
-        self.accepted_submission_count = 0
-        self.rating_length = 0
-
-    @classmethod
-    def get_problem(cls, number, author_id=None):
-        problem_url = cls._problem_url_pattern.format(number)
-        cookies = {'AuthorID': author_id, 'Locale': 'Russian'}
-        response = requests.get(problem_url, cookies=cookies)
-        problem = ProblemParser.parse(response.content)
         return problem
