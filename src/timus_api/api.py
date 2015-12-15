@@ -2,7 +2,7 @@
 
 import requests
 
-from parsers import ProblemParser, parse_languages, parse_submit_status
+from .parsers import parse_languages, parse_submit_status, parse_problem
 
 
 class TimusUrls:
@@ -69,7 +69,7 @@ class TimusApi(object):
     def get_problem(self, number):
         problem_url = TimusUrls.problem.format(number)
         response = self._get(problem_url)
-        return ProblemParser.parse(response.content)
+        return parse_problem(response.content)
 
     def get_submit_status(self, submit_id):
         response = self._get(TimusUrls.status.format(submit_id))

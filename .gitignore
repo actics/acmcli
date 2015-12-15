@@ -56,3 +56,4 @@ target/
 # Work staff
 source
 *.swp
+.idea/

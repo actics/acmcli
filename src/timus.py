@@ -1,18 +1,16 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # coding: utf-8
 
-from __future__ import print_function
 import time
 import os
-import os.path
 import json
 
-from settings import Settings
 from timus_api import TimusApi
+from settings import Settings
 
 
 MAX_SUBMIT_ATTEMPTS_TIME = 15
-AUTHOR_ID_STORAGE_FILE = '~/.local/share/timus/author_ids.json'
+AUTHOR_ID_STORAGE_FILE = os.path.expanduser('~/.local/share/timus/author_ids.json')
 language_map = {
     'c': 'gcc',
     'c++': 'g++',
@@ -27,13 +25,13 @@ def set_api_author_id(api, judge_id):
     if not os.path.exists(author_ids_dir):
         os.makedirs(author_ids_dir)
 
-    with open(AUTHOR_ID_STORAGE_FILE, 'r') as json_file:
-        try:
-            author_ids = json.loads(json_file.readall())
-        except ValueError:
-            author_ids = {}
+    try:
+        with open(AUTHOR_ID_STORAGE_FILE, 'r') as json_file:
+                author_ids = json.loads(json_file.read())
+    except FileNotFoundError:
+        author_ids = {}
 
-    if not author_ids.has_key(judge_id):
+    if judge_id not in author_ids:
         author_ids[judge_id] = api.login(judge_id)
 
         with open(AUTHOR_ID_STORAGE_FILE, 'w') as json_file:
@@ -44,10 +42,10 @@ def set_api_author_id(api, judge_id):
 
 def convert_language(language, languages):
     lang = language.lower()
-    if language_map.has_key(lang):
+    if lang in language_map:
         lang = language_map[lang]
 
-    for compiler in languages.iterkeys():
+    for compiler in languages:
         if lang in compiler.lower():
             return languages[compiler]
     return None
@@ -60,9 +58,16 @@ def submit(api, settings):
     languages = api.get_languages()
     lang = convert_language(settings.language, languages)
 
+    try:
+        with open(settings.source_file, 'r') as source_file:
+            source = source_file.read()
+    except FileNotFoundError:
+        # FIXME(actics): print
+        raise
+
     start_time = time.time()
     while (time.time() - start_time) < MAX_SUBMIT_ATTEMPTS_TIME:
-        status_id = api.submit(settings.judge_id, lang, settings.problem_number, settings.source)
+        status_id = api.submit(settings.judge_id, lang, settings.problem_number, source)
         if status_id is not None:
             return status_id
         print('Wait...')
@@ -85,16 +90,15 @@ def main():
     if settings.judge_id is not None:
         set_api_author_id(api, settings.judge_id)
 
-    if settings.action is None:
+    if settings.action == 'submit':
         status_id = submit(api, settings)
         process_submit_status(api, status_id)
     elif settings.action == 'problem':
         problem = api.get_problem(settings.problem_number)
         print(problem.title)
     elif settings.action == 'languages':
-        languages = api.get_languages().keys()
-        languages.sort()
-        for language in languages:
+        languages = api.get_languages()
+        for language in sorted(languages):
             print(language)
 
 
