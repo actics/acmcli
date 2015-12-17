@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding=utf-8
 
 import gettext
 import json
@@ -123,14 +122,15 @@ def problem_action(api: AcmApi, settings: Settings) -> None:
     accepted = ''
     if problem.is_accepted is not None:
         accepted = '[✔] ' if problem.is_accepted else '[-] '
-    print('{ac}{p.title}'.format(p=problem, ac=accepted), end=double_sep)
+    print('{ac}{p.number}. {p.title}'.format(p=problem, ac=accepted), end=double_sep)
     print(_('Time limit: {p.time_limit}, Memory limit: {p.memory_limit}').format(p=problem))
-    if problem.author:
-        print(_('Author: {p.author}').format(p=problem), end='')
-    if problem.source:
-        print(_('Source: {p.source}').format(p=problem), end='')
-    if problem.author or problem.source:
-        print()
+    print(_('Source: '), end='')
+    if problem.author and problem.source:
+        print(_('{p.author} @ {p.source}').format(p=problem))
+    elif problem.author:
+        print(_('{p.author}').format(p=problem))
+    elif problem.source:
+        print(_('{p.source}').format(p=problem))
     if settings.show_tags:
         print(_('Tags: {0}').format(', '.join(problem.tags)))
     print(_('Difficulty: {p.difficulty}').format(p=problem), end=double_sep)
@@ -153,6 +153,22 @@ def language_action(api: AcmApi, settings: Settings) -> None:
         print(language)
 
 
+def problem_set_action(api: AcmApi, settings: Settings) -> None:
+    problems = api.get_problem_set()
+    max_title_len = max([len(p.title) for p in problems]) + 2
+    max_source_len = max([len(p.source) for p in problems]) + 2
+    title_pattern = '{{p.title:<{0}}}'.format(max_title_len)
+    source_pattern = '{{p.source:<{0}}}'.format(max_source_len)
+    for problem in problems:
+        title = title_pattern.format(p=problem)
+        source = source_pattern.format(p=problem)
+        accepted = ''
+        if problem.is_accepted is not None:
+            accepted = '✔' if problem.is_accepted else '-'
+        difficulty = _('difficulty: {p.difficulty}').format(p=problem)
+        print('[{0:^3}] {p.number}. {1} {2} {3}'.format(accepted, title, source, difficulty, p=problem))
+
+
 def main() -> None:
     colorama.init()
     settings = Settings.read()
@@ -167,6 +183,8 @@ def main() -> None:
         problem_action(api, settings)
     elif settings.action == 'languages':
         language_action(api, settings)
+    elif settings.action == 'problem-set':
+        problem_set_action(api, settings)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,3 @@
-# coding=utf-8
-
-
 class SubmitStatus(object):
     _processing_verdicts = ['Compiling', 'Running', 'Waiting']
     _running_verdict = 'Running'

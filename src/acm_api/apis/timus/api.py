@@ -1,9 +1,8 @@
-# coding=utf-8
-
 import requests
+from typing import List
 
-from acm_api.acm_api import AcmApi
-from .parsers import parse_languages, parse_submit_status, parse_problem
+from acm_api.acm_api import AcmApi, Problem
+from .parsers import parse_languages, parse_submit_status, parse_problem, parse_problem_set
 
 
 class TimusUrls:
@@ -14,6 +13,7 @@ class TimusUrls:
     error = 'http://acm.timus.ru/ce.aspx?id={0}'
     get_submit = 'http://acm.timus.ru/getsubmit.aspx/{0}.pas'
     problem = 'http://acm.timus.ru/problem.aspx?num={0}'
+    problem_set = "http://acm.timus.ru/problemset.aspx?page=all"
 
 
 class TimusApi(AcmApi):
@@ -94,3 +94,7 @@ class TimusApi(AcmApi):
             return None
 
         return response.headers['x-submitid']
+
+    def get_problem_set(self) -> List[Problem]:
+        response = self._get(TimusUrls.problem_set)
+        return parse_problem_set(response.content)

@@ -1,18 +1,9 @@
-# coding=utf-8
+from typing import List
 
 import lxml.html
 from html2text import html2text
 
 from acm_api.structs import SubmitStatus, Problem
-
-
-def _parse_verdict(element):
-    verdict = element.find_class('verdict_rj')
-    if len(verdict) == 0:
-        verdict = element.find_class('verdict_wt')
-    if len(verdict) == 0:
-        verdict = element.find_class('verdict_ac')
-    return verdict[0].text_content()
 
 
 def parse_submit_status(html):
@@ -59,6 +50,35 @@ def parse_problem(html):
     _set_text_and_samples(tree, problem)
 
     return problem
+
+
+def parse_problem_set(html: str) -> List[Problem]:
+    tree = lxml.html.fromstring(html)
+    problems = list()
+    contents = tree.find_class('content')[1:]
+    for content in contents:
+        content = list(content.iterchildren())
+        problem = Problem()
+        if content[0].xpath('.//img[@src="images/ok.gif"]'):
+            problem.is_accepted = True
+        elif content[0].xpath('.//img[@src="images/minus.gif"]'):
+            problem.is_accepted = False
+        problem.number = content[1].text_content()
+        problem.title = content[2].text_content()
+        problem.source = content[3].text_content()
+        problem.rating_length = content[4].text_content()
+        problem.difficulty = content[5].text_content()
+        problems.append(problem)
+    return problems
+
+
+def _parse_verdict(element):
+    verdict = element.find_class('verdict_rj')
+    if len(verdict) == 0:
+        verdict = element.find_class('verdict_wt')
+    if len(verdict) == 0:
+        verdict = element.find_class('verdict_ac')
+    return verdict[0].text_content()
 
 
 def _set_number_and_title(tree, problem):

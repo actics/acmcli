@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from abc import ABCMeta, abstractmethod
 from typing import List
 
@@ -29,4 +27,8 @@ class AcmApi(metaclass=ABCMeta):
 
     @abstractmethod
     def submit(self, judge_id: str, language: int, problem_num: int, source: str) -> SubmitStatus:
+        pass
+
+    @abstractmethod
+    def get_problem_set(self) -> List[Problem]:
         pass
