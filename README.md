@@ -1,4 +1,4 @@
-timus
+acmcli
 =====
 
-Console client for acm.timus.ru
+Console client for ACM online judge

@@ -1,29 +1,38 @@
-# coding: utf-8
+# coding=utf-8
 
 import lxml.html
 from html2text import html2text
 
-from .structs import SubmitStatus, Problem
+from acm_api.structs import SubmitStatus, Problem
+
+
+def _parse_verdict(element):
+    verdict = element.find_class('verdict_rj')
+    if len(verdict) == 0:
+        verdict = element.find_class('verdict_wt')
+    if len(verdict) == 0:
+        verdict = element.find_class('verdict_ac')
+    return verdict[0].text_content()
 
 
 def parse_submit_status(html):
-    tree = lxml.html.fromstring(html)
+    status_element = lxml.html.fromstring(html).find_class('even')[0]
 
-    status_element = tree.find_class('even')[0]
-    verdict_element = status_element.find_class('verdict_rj')
-    if len(verdict_element) == 0:
-        verdict_element = status_element.find_class('verdict_wt')
-    if len(verdict_element) == 0:
-        verdict_element = status_element.find_class('verdict_ac')
+    get_info = lambda name: status_element.find_class(name)[0].text_content()
 
     status = SubmitStatus()
-    status.verdict = verdict_element[0].text_content()
-    status.submit_id = status_element.find_class('id')[0].text_content()
-    status.language = status_element.find_class('language')[0].text_content()
-    status.problem = status_element.find_class('problem')[0].text_content()
-    status.test = status_element.find_class('test')[0].text_content()
-    status.runtime = status_element.find_class('runtime')[0].text_content()
-    status.memory = status_element.find_class('memory')[0].text_content()
+    status.submit_id = get_info('id')
+    status.date = get_info('date')
+    status.author = get_info('coder')
+    status.problem = get_info('problem')
+    status.language = get_info('language')
+    status.test = get_info('test')
+    status.runtime = get_info('runtime')
+    status.memory = get_info('memory')
+
+    status.set_verdict(_parse_verdict(status_element))
+    status.memory = ' '.join(status.memory.split()[:-1])
+
     return status
 
 
@@ -97,6 +106,8 @@ def _set_links(tree, problem):
     problem.difficulty = int(links.xpath('./span')[0].text.split()[1])
     problem.is_accepted = len(links.find_class('myac')) == 1
     links = links.xpath('a[@href]')
+    if not problem.is_accepted:
+        problem.is_accepted = False if len(links) == 7 else None
     problem.discussion_count = get_number(links[2].text)
     links = links[4:] if len(links) == 7 else links[3:]
     problem.submission_count = get_number(links[0].text)
@@ -108,6 +119,22 @@ def _set_text_and_samples(tree, problem):
     text = tree.get_element_by_id('problem_text')
     source = text.find_class('problem_source')[0]
     source.getparent().remove(source)
+    input_next = False
+    output_next = False
+    for div in text.iterchildren():
+        if div.text in ['Input', 'Исходные данные']:
+            input_next = True
+        elif div.text in ['Output', 'Результат']:
+            output_next = True
+        elif input_next:
+            input_next = False
+            problem.input = html2text(lxml.html.tostring(div).decode('utf-8')).strip()
+        elif output_next:
+            output_next = False
+            problem.output = html2text(lxml.html.tostring(div).decode('utf-8')).strip()
+        else:
+            continue
+        div.getparent().remove(div)
     samples = text.find_class('sample')
     if len(samples) == 1:
         sample = samples[0]
@@ -117,6 +144,6 @@ def _set_text_and_samples(tree, problem):
         sample.getparent().remove(sample)
         sample_h3.getparent().remove(sample_h3)
         intables = sample.find_class('intable')
-        problem.sample_input = [x.text for x in intables[0::2]]
-        problem.sample_output = [x.text for x in intables[1::2]]
-    problem.text = html2text(lxml.html.tostring(text).decode('utf-8'))
+        problem.sample_input = [x.text.rstrip() for x in intables[0::2]]
+        problem.sample_output = [x.text.rstrip() for x in intables[1::2]]
+    problem.text = html2text(lxml.html.tostring(text).decode('utf-8')).strip()

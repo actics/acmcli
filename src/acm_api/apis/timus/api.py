@@ -1,7 +1,8 @@
-# coding: utf-8
+# coding=utf-8
 
 import requests
 
+from acm_api.acm_api import AcmApi
 from .parsers import parse_languages, parse_submit_status, parse_problem
 
 
@@ -15,10 +16,10 @@ class TimusUrls:
     problem = 'http://acm.timus.ru/problem.aspx?num={0}'
 
 
-class TimusApi(object):
-    def __init__(self, locale, author_id=None):
+class TimusApi(AcmApi):
+    def __init__(self, locale):
         self.locale = locale
-        self.author_id = author_id
+        self.author_id = None
         self.session_id = None
 
     @property
@@ -43,7 +44,7 @@ class TimusApi(object):
 
     def login(self, judge_id):
         payload = {
-            'Action' : 'login',
+            'Action': 'login',
             'JudgeID': judge_id
         }
 
@@ -76,10 +77,9 @@ class TimusApi(object):
         return parse_submit_status(response.content)
 
     def submit(self, judge_id, language, problem_num, source):
-        '''The break between submissions must be at least 10 seconds
-        if we spend more than once at 10 seconds, Timus return a submit
-        page with error string
-        '''
+        # The break between submissions must be at least 10 seconds
+        # if we spend more than once at 10 seconds, Timus return a submit
+        # page with error string
         payload = {
             'Action': 'submit',
             'SpaceID': 1,

@@ -1,4 +1,4 @@
-# coding: utf-8
+# coding=utf-8
 
 import os
 import locale
@@ -7,7 +7,7 @@ import argparse
 
 
 _SECTION = 'section'
-_DEFAULT_SOURCE_FILE = '~/timus.code'
+_DEFAULT_SOURCE_FILE = '~/acmcli.code'
 
 
 def _parse_args():
@@ -30,7 +30,7 @@ class Config(object):
         self.language = 'c'
         self.locale = None
         self.show_tags = False
-        self.default_source_file = os.path.expanduser('~/timus.code')
+        self.default_source_file = os.path.expanduser(_DEFAULT_SOURCE_FILE)
 
     @classmethod
     def read(cls, config_name):
@@ -58,7 +58,7 @@ class Config(object):
 
 
 class Settings(object):
-    _CONFIG_NAME = '~/.config/timus.conf'
+    _CONFIG_NAME = '~/.config/acmcli.conf'
 
     def __init__(self):
         self.action = ''
@@ -95,5 +95,3 @@ class Settings(object):
         settings.convert_locale()
 
         return settings
-
-
