@@ -32,3 +32,7 @@ class AcmApi(metaclass=ABCMeta):
     @abstractmethod
     def get_problem_set(self) -> List[Problem]:
         pass
+
+    @abstractmethod
+    def get_submits_of(self) -> List[SubmitStatus]:
+        pass

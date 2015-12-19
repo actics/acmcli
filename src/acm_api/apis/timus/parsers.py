@@ -1,3 +1,4 @@
+from functools import reduce
 from typing import List
 
 import lxml.html
@@ -8,23 +9,7 @@ from acm_api.structs import SubmitStatus, Problem
 
 def parse_submit_status(html):
     status_element = lxml.html.fromstring(html).find_class('even')[0]
-
-    get_info = lambda name: status_element.find_class(name)[0].text_content()
-
-    status = SubmitStatus()
-    status.submit_id = get_info('id')
-    status.date = get_info('date')
-    status.author = get_info('coder')
-    status.problem = get_info('problem')
-    status.language = get_info('language')
-    status.test = get_info('test')
-    status.runtime = get_info('runtime')
-    status.memory = get_info('memory')
-
-    status.set_verdict(_parse_verdict(status_element))
-    status.memory = ' '.join(status.memory.split()[:-1])
-
-    return status
+    return _parse_submit_status_element(status_element)
 
 
 def parse_languages(html):
@@ -70,6 +55,36 @@ def parse_problem_set(html: str) -> List[Problem]:
         problem.difficulty = content[5].text_content()
         problems.append(problem)
     return problems
+
+
+def parse_submits_of(html: str) -> List[SubmitStatus]:
+    tree = lxml.html.fromstring(html)
+    evens = tree.find_class('even')
+    odds = tree.find_class('odd')
+    status_elements = reduce(list.__add__, [list(x) for x in zip(evens, odds)], [])
+    if len(evens) > len(odds):
+        status_elements.append(evens[-1])
+
+    return [_parse_submit_status_element(element) for element in status_elements]
+
+
+def _parse_submit_status_element(status_element):
+    get_info = lambda name: status_element.find_class(name)[0].text_content()
+
+    status = SubmitStatus()
+    status.submit_id = get_info('id')
+    status.date = get_info('date')
+    status.author = get_info('coder')
+    status.problem = get_info('problem')
+    status.language = get_info('language')
+    status.test = get_info('test')
+    status.runtime = get_info('runtime')
+    status.memory = get_info('memory')
+
+    status.set_verdict(_parse_verdict(status_element))
+    status.memory = ' '.join(status.memory.split()[:-1])
+
+    return status
 
 
 def _parse_verdict(element):
@@ -164,6 +179,6 @@ def _set_text_and_samples(tree, problem):
         sample.getparent().remove(sample)
         sample_h3.getparent().remove(sample_h3)
         intables = sample.find_class('intable')
-        problem.sample_input = [x.text.rstrip() for x in intables[0::2]]
-        problem.sample_output = [x.text.rstrip() for x in intables[1::2]]
+        problem.sample_inputs = [x.text.rstrip() for x in intables[0::2]]
+        problem.sample_outputs = [x.text.rstrip() for x in intables[1::2]]
     problem.text = html2text(lxml.html.tostring(text).decode('utf-8')).strip()

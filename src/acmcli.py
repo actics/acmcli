@@ -83,7 +83,7 @@ def submit_action(api: AcmApi, settings: Settings) -> None:
     process_submit_status(api, bar, status_id)
 
 
-def submit(api: AcmApi, source: str, settings: Settings) -> SubmitStatus:
+def submit(api: AcmApi, source: str, settings: Settings) -> str:
     languages = api.get_languages()
     lang = convert_language(settings.language, languages)
 
@@ -139,11 +139,11 @@ def problem_action(api: AcmApi, settings: Settings) -> None:
     print(problem.input, end=double_sep)
     print(_('### Output'), end=double_sep)
     print(problem.output, end=double_sep)
-    print(_n('### Sample', '### Samples', len(problem.sample_input)), end=double_sep)
+    print(_n('### Sample', '### Samples', len(problem.sample_inputs)), end=double_sep)
     for sample_input, sample_output in zip(problem.sample_inputs, problem.sample_outputs):
-        print(_('-----> Input <---------------------------------------------------------'))
+        print(_('-----> Input <----------------------------------------------------------------'))
         print(sample_input)
-        print(_('-----> Output <--------------------------------------------------------'))
+        print(_('-----> Output <---------------------------------------------------------------'))
         print(sample_output)
 
 
@@ -156,17 +156,21 @@ def language_action(api: AcmApi, settings: Settings) -> None:
 def problem_set_action(api: AcmApi, settings: Settings) -> None:
     problems = api.get_problem_set()
     max_title_len = max([len(p.title) for p in problems]) + 2
-    max_source_len = max([len(p.source) for p in problems]) + 2
     title_pattern = '{{p.title:<{0}}}'.format(max_title_len)
-    source_pattern = '{{p.source:<{0}}}'.format(max_source_len)
     for problem in problems:
         title = title_pattern.format(p=problem)
-        source = source_pattern.format(p=problem)
         accepted = ''
         if problem.is_accepted is not None:
             accepted = '✔' if problem.is_accepted else '-'
-        difficulty = _('difficulty: {p.difficulty}').format(p=problem)
-        print('[{0:^3}] {p.number}. {1} {2} {3}'.format(accepted, title, source, difficulty, p=problem))
+        difficulty = _('difficulty: {p.difficulty:<6}').format(p=problem)
+        authors = _('authors: {p.rating_length}').format(p=problem)
+        print('[{0:^3}] {p.number}. {1} {2} {3}'.format(accepted, title, difficulty, authors, p=problem))
+
+
+def submits_of_action(api: AcmApi, settings: Settings) -> None:
+    submits = api.get_submits_of(settings.problem_number)
+    for submit in submits:
+        print(submit.verdict)
 
 
 def main() -> None:
@@ -185,6 +189,9 @@ def main() -> None:
         language_action(api, settings)
     elif settings.action == 'problem-set':
         problem_set_action(api, settings)
+    elif settings.action == 'submits-of':
+        # TODO(actics): check for login
+        submits_of_action(api, settings)
 
 
 if __name__ == '__main__':
