@@ -1,3 +1,6 @@
+import enum
+
+
 class SubmitStatus(object):
     _processing_verdicts = ['Compiling', 'Running', 'Waiting']
     _running_verdict = 'Running'
@@ -64,3 +67,9 @@ class Problem(object):
         self.submission_count = 0
         self.accepted_submission_count = 0
         self.rating_length = 0
+
+
+class SortType(enum.Enum):
+    id = 'id'
+    authors = 'authors'
+    difficulty = 'difficulty'

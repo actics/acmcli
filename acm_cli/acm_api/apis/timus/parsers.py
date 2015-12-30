@@ -1,10 +1,11 @@
+import urllib.parse
 from functools import reduce
-from typing import List
+from typing import List, Tuple
 
 import lxml.html
 from html2text import html2text
 
-from acm_api.structs import SubmitStatus, Problem
+from ...acm_api import SubmitStatus, Problem
 
 
 def parse_submit_status(html):
@@ -57,7 +58,7 @@ def parse_problem_set(html: str) -> List[Problem]:
     return problems
 
 
-def parse_submits_of(html: str) -> List[SubmitStatus]:
+def parse_problem_submits(html: str) -> List[SubmitStatus]:
     tree = lxml.html.fromstring(html)
     evens = tree.find_class('even')
     odds = tree.find_class('odd')
@@ -66,6 +67,28 @@ def parse_submits_of(html: str) -> List[SubmitStatus]:
         status_elements.append(evens[-1])
 
     return [_parse_submit_status_element(element) for element in status_elements]
+
+
+def parse_tags(html: str) -> List[Tuple[str, str]]:
+    tree = lxml.html.fromstring(html)
+    ps = tree.xpath('//p')[2:]
+    tags = list()
+    for element in ps[0].xpath('.//a') + ps[1].xpath('.//a'):
+        description = element.text
+        name = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['tag'][0]
+        tags.append((name, description))
+    return tags
+
+def parse_pages(html: str) -> List[Tuple[str, str]]:
+    tree = lxml.html.fromstring(html)
+    ps = tree.xpath('//p')
+    pages = list()
+    pages_elements = [ps[0].xpath('.//a')[0]] + ps[1].xpath('.//a')[0::2]
+    for element in pages_elements:
+        description = element.text
+        name = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['page'][0]
+        pages.append((name, description))
+    return pages
 
 
 def _parse_submit_status_element(status_element):

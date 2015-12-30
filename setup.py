@@ -11,7 +11,7 @@ setup(
     description='Console client for ACM online judges',
     entry_points="""
         [console_scripts]
-        acmcli=acmcli:main
+        acmcli=main:main
     """,
-    install_requires=['requests', 'lxml', 'html2text']
+    install_requires=['requests', 'lxml', 'html2text', 'colorama']
 )

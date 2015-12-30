@@ -1,12 +1,20 @@
 from abc import ABCMeta, abstractmethod
-from typing import List
+from typing import List, Tuple
 
-from .structs import Problem, SubmitStatus
+from .structs import Problem, SubmitStatus, SortType
 
 
 class AcmApi(metaclass=ABCMeta):
     @abstractmethod
     def login(self, judge_id: str) -> None:
+        pass
+
+    @abstractmethod
+    def login_local(self, judge_id: str) -> None:
+        pass
+
+    @abstractmethod
+    def get_auth_key(self) -> str:
         pass
 
     @abstractmethod
@@ -30,9 +38,18 @@ class AcmApi(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_problem_set(self) -> List[Problem]:
+    def get_problem_set(self, page: str='all', tag: str=None, sort_type: SortType=SortType.id, show_ac: bool=True)\
+    -> List[Problem]:
         pass
 
     @abstractmethod
-    def get_submits_of(self) -> List[SubmitStatus]:
+    def get_problem_submits(self, problem_number: int, count: int=1000) -> List[SubmitStatus]:
+        pass
+
+    @abstractmethod
+    def get_tags(self) -> List[Tuple[str, str]]:
+        pass
+
+    @abstractmethod
+    def get_pages(self) -> List[Tuple[str, str]]:
         pass
