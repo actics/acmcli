@@ -1,24 +1,20 @@
 from abc import ABCMeta, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from .structs import Problem, SubmitStatus, SortType
 
 
 class AcmApi(metaclass=ABCMeta):
     @abstractmethod
-    def login(self, judge_id: str) -> None:
+    def login(self, judge_id: str, password: str) -> None:
         pass
 
     @abstractmethod
-    def login_local(self, judge_id: str) -> None:
+    def login_local(self, judge_id: str, password: str, auth_key: str) -> None:
         pass
 
     @abstractmethod
     def get_auth_key(self) -> str:
-        pass
-
-    @abstractmethod
-    def get_languages(self) -> List[str]:
         pass
 
     @abstractmethod
@@ -34,16 +30,24 @@ class AcmApi(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit(self, judge_id: str, language: int, problem_num: int, source: str) -> SubmitStatus:
+    def submit(self, judge_id: str, language: str, problem_num: int, source: str) -> SubmitStatus:
         pass
 
     @abstractmethod
-    def get_problem_set(self, page: str='all', tag: str=None, sort_type: SortType=SortType.id, show_ac: bool=True)\
-    -> List[Problem]:
+    def get_problem_set(self, page: str = 'all', tag: str = None, sort_type: SortType = SortType.id,
+                        show_ac: bool = True) -> List[Problem]:
         pass
 
     @abstractmethod
-    def get_problem_submits(self, problem_number: int, count: int=1000) -> List[SubmitStatus]:
+    def get_problem_submits(self, problem_number: int, count: int = 1000) -> List[SubmitStatus]:
+        pass
+
+    @abstractmethod
+    def get_submit_source(self, submit_id: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_languages(self) -> Dict[str, str]:
         pass
 
     @abstractmethod

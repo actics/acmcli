@@ -28,14 +28,14 @@ def api_auth(api: AcmApi, settings: Settings) -> None:
         auth_keys = {}
 
     if settings.judge_id not in auth_keys:
-        api.login(settings.judge_id)
+        api.login(settings.judge_id, settings.password)
 
         auth_keys[settings.judge_id] = api.get_auth_key()
 
         with open(AUTH_KEYS_FILE, 'a') as json_file:
             json_file.write(json.dumps(auth_keys))
     else:
-        api.login_local(auth_keys[settings.judge_id])
+        api.login_local(settings.judge_id, settings.password, auth_keys[settings.judge_id])
 
 
 error_msg = 'Can\'t find compilers for language {0}. ' + \

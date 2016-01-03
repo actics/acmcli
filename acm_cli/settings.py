@@ -42,6 +42,10 @@ def _parse_args():
     problem_set_parser.add_argument('-j', '--judge-id')
     problem_set_parser.add_argument('--show-ac', action='store_const', const=True, help='show solved problems')
 
+    submit_source_parser = subparsers.add_parser(Action.submit_source.value, help='get submit source code')
+    submit_source_parser.add_argument('submit_id', type=int)
+    submit_source_parser.add_argument('-j', '--judge-id')
+
     subparsers.add_parser(Action.languages.value, help='get languages list')
     subparsers.add_parser(Action.tags.value, help='get tags list')
     subparsers.add_parser(Action.pages.value, help='get pages list')
@@ -99,6 +103,8 @@ class Settings(object):
         self.author_id = ''
         self.language = ''
         self.locale = ''
+        self.submit_id = ''
+        self.password = ''
         self.show_tags = False
         self.show_ac = True
         self.sort = None
@@ -115,7 +121,6 @@ class Settings(object):
     @classmethod
     def read(cls):
         args = _parse_args()
-        print(args)
         # TODO(actics): set default config name in build
         config_name = args.config if args.config is not None else _CONFIG_NAME
         config = Config.read(config_name)
@@ -147,6 +152,11 @@ class Settings(object):
             settings.judge_id = args.judge_id if args.judge_id is not None else config.judge_id
             settings.show_ac = args.show_ac if args.show_ac is not None else config.show_ac
 
+        if settings.action == Action.submit_source:
+            settings.submit_id = args.submit_id
+            settings.judge_id = args.judge_id if args.judge_id is not None else config.judge_id
+
+        settings.password = config.password
         settings.locale = args.locale if args.locale is not None else config.locale
         settings.convert_locale()
 

@@ -1,6 +1,6 @@
 import urllib.parse
 from functools import reduce
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import lxml.html
 from html2text import html2text
@@ -8,12 +8,12 @@ from html2text import html2text
 from ...acm_api import SubmitStatus, Problem
 
 
-def parse_submit_status(html):
+def parse_submit_status(html: str) -> SubmitStatus:
     status_element = lxml.html.fromstring(html).find_class('even')[0]
     return _parse_submit_status_element(status_element)
 
 
-def parse_languages(html):
+def parse_languages(html: str) -> Dict[str, str]:
         tree = lxml.html.fromstring(html)
         select_tag = tree.xpath('//select')[0]
         option_tags = select_tag.xpath('./option')
@@ -24,7 +24,7 @@ def parse_languages(html):
         return languages
 
 
-def parse_problem(html):
+def parse_problem(html: str) -> Problem:
     tree = lxml.html.fromstring(html)
 
     problem = Problem()
@@ -79,6 +79,7 @@ def parse_tags(html: str) -> List[Tuple[str, str]]:
         tags.append((name, description))
     return tags
 
+
 def parse_pages(html: str) -> List[Tuple[str, str]]:
     tree = lxml.html.fromstring(html)
     ps = tree.xpath('//p')
@@ -91,18 +92,23 @@ def parse_pages(html: str) -> List[Tuple[str, str]]:
     return pages
 
 
-def _parse_submit_status_element(status_element):
-    get_info = lambda name: status_element.find_class(name)[0].text_content()
+def _get_info_from_submit_element(status_element: lxml.html.HtmlElement, name: str) -> str:
+    return status_element.find_class(name)[0].text_content()
 
+
+def _parse_submit_status_element(status_element: lxml.html.HtmlElement) -> SubmitStatus:
     status = SubmitStatus()
-    status.submit_id = get_info('id')
-    status.date = get_info('date')
-    status.author = get_info('coder')
-    status.problem = get_info('problem')
-    status.language = get_info('language')
-    status.test = get_info('test')
-    status.runtime = get_info('runtime')
-    status.memory = get_info('memory')
+    id_element = status_element.find_class('id')[0]
+    status.submit_id = id_element.text_content()
+    if len(id_element.getchildren()) == 1:
+        status.source_file = id_element.getchildren()[0].attrib['href'].split('/')[1]
+    status.date = _get_info_from_submit_element(status_element, 'date')
+    status.author = _get_info_from_submit_element(status_element, 'coder')
+    status.problem = _get_info_from_submit_element(status_element, 'problem')
+    status.language = _get_info_from_submit_element(status_element, 'language')
+    status.test = _get_info_from_submit_element(status_element, 'test')
+    status.runtime = _get_info_from_submit_element(status_element, 'runtime')
+    status.memory = _get_info_from_submit_element(status_element, 'memory')
 
     status.set_verdict(_parse_verdict(status_element))
     status.memory = ' '.join(status.memory.split()[:-1])
@@ -110,7 +116,7 @@ def _parse_submit_status_element(status_element):
     return status
 
 
-def _parse_verdict(element):
+def _parse_verdict(element: lxml.html.HtmlElement) -> str:
     verdict = element.find_class('verdict_rj')
     if len(verdict) == 0:
         verdict = element.find_class('verdict_wt')
@@ -119,21 +125,21 @@ def _parse_verdict(element):
     return verdict[0].text_content()
 
 
-def _set_number_and_title(tree, problem):
+def _set_number_and_title(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     title = tree.find_class('problem_title')[0].text
     dot_position = title.find('.')
     problem.number = int(title[:dot_position])
     problem.title = title[dot_position+1:].strip()
 
 
-def _set_limits(tree, problem):
+def _set_limits(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     limits = tree.find_class('problem_limits')[0]
     limits = [x for x in limits.itertext()]
     problem.time_limit = limits[0].split(':')[1].strip()
     problem.memory_limit = limits[1].split(':')[1].strip()
 
 
-def _set_author_and_source(tree, problem):
+def _set_author_and_source(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     source = tree.find_class('problem_source')[0]
     source = [x for x in source.itertext()]
     if len(source) == 0:
@@ -152,28 +158,31 @@ def _set_author_and_source(tree, problem):
             raise Exception()
 
 
-def _set_tags(tree, problem):
+def _set_tags(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     tags_div = tree.find_class('problem_tags_toggle')[0].getparent()
     tags = tags_div.xpath('./a[@href]')
     problem.tags = [x.text for x in tags]
 
 
-def _set_links(tree, problem):
-    get_number = lambda x: int(x[:-1].split('(')[-1])
+def _get_number_from_links(element: str) -> int:
+    return int(element[:-1].split('(')[-1])
+
+
+def _set_links(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     links = tree.find_class('problem_links')[0]
     problem.difficulty = int(links.xpath('./span')[0].text.split()[1])
     problem.is_accepted = len(links.find_class('myac')) == 1
     links = links.xpath('a[@href]')
     if not problem.is_accepted:
         problem.is_accepted = False if len(links) == 7 else None
-    problem.discussion_count = get_number(links[2].text)
+    problem.discussion_count = _get_number_from_links(links[2].text)
     links = links[4:] if len(links) == 7 else links[3:]
-    problem.submission_count = get_number(links[0].text)
-    problem.accepted_submission_count = get_number(links[1].text)
-    problem.rating_length = get_number(links[2].text)
+    problem.submission_count = _get_number_from_links(links[0].text)
+    problem.accepted_submission_count = _get_number_from_links(links[1].text)
+    problem.rating_length = _get_number_from_links(links[2].text)
 
 
-def _set_text_and_samples(tree, problem):
+def _set_text_and_samples(tree: lxml.html.HtmlElement, problem: Problem) -> None:
     text = tree.get_element_by_id('problem_text')
     source = text.find_class('problem_source')[0]
     source.getparent().remove(source)

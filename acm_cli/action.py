@@ -6,6 +6,7 @@ class Action(Enum):
     problem = 'problem'
     problem_submits = 'problem-submits'
     problem_set = 'problem-set'
+    submit_source = 'submit-source'
     languages = 'languages'
     tags = 'tags'
     pages = 'pages'

@@ -14,7 +14,7 @@ class TimusUrls(Enum):
     auth = 'http://acm.timus.ru/auth.aspx'
     status = 'http://acm.timus.ru/status.aspx'
     error = 'http://acm.timus.ru/ce.aspx'
-    get_submit = 'http://acm.timus.ru/getsubmit.aspx/{0}.pas'
+    get_submit = 'http://acm.timus.ru/getsubmit.aspx'
     problem = 'http://acm.timus.ru/problem.aspx'
     problem_set = 'http://acm.timus.ru/problemset.aspx'
 
@@ -31,10 +31,14 @@ class TimusUrls(Enum):
 class TimusApi(AcmApi):
     def __init__(self, locale):
         self.locale = locale
+        self._password = None
+        self._judge_id = None
         self._session = requests.Session()
         self._session.cookies.set('Locale', locale)
 
-    def login(self, judge_id):
+    def login(self, judge_id, password):
+        self._judge_id = judge_id
+        self._password = password
         payload = {
             'Action': 'login',
             'JudgeID': judge_id
@@ -42,8 +46,10 @@ class TimusApi(AcmApi):
 
         self._session.post(TimusUrls.auth, payload, allow_redirects=False)
 
-    def login_local(self, author_id):
-        self._session.cookies.set('AuthorID', author_id)
+    def login_local(self, judge_id, password, auth_key):
+        self._judge_id = judge_id
+        self._password = password
+        self._session.cookies.set('AuthorID', auth_key)
 
     def get_auth_key(self) -> str:
         return self._session.cookies['AuthorID']
@@ -71,7 +77,7 @@ class TimusApi(AcmApi):
         return parsers.parse_problem(response.content)
 
     def get_submit_status(self, submit_id):
-        query = {'count': 1, 'from': submit_id}
+        query = {'count': 1, 'from': submit_id, 'author': 'me'}
         url = TimusUrls.status.set_query(query)
         response = self._session.get(url)
         return parsers.parse_submit_status(response.content)
@@ -95,12 +101,30 @@ class TimusApi(AcmApi):
 
         return response.headers['x-submitid']
 
-    def get_problem_set(self, page: str='all', tag: str=None, sort_type: SortType=SortType.id, show_ac: bool=True) \
-    -> List[Problem]:
+    def get_problem_set(self, page: str = 'all', tag: str = None, sort_type: SortType = SortType.id,
+                        show_ac: bool = True) -> List[Problem]:
         query = {'page': page, 'sort': sort_type.name, 'skipac': not show_ac, 'tag': tag}
         url = TimusUrls.problem_set.set_query(query)
         response = self._session.get(url)
         return parsers.parse_problem_set(response.content)
+
+    def get_submit_source(self, submit_id: str) -> str:
+        status = self.get_submit_status(submit_id)
+        payload = {
+            'Action': 'getsubmit',
+            'JudgeID': self._judge_id,
+            'Password': self._password
+        }
+        url = TimusUrls.get_submit.value + '/' + status.source_file
+        response = self._session.post(url, payload)
+
+        # if source code is found, timus return a text/plain
+        # else he return html page
+        if response.headers['Content-Type'].startswith('text/html'):
+            # TODO(actics): raise exception
+            return ''
+
+        return response.content.decode('utf-8')
 
     def get_tags(self) -> List[Tuple[str, str]]:
         response = self._session.get(TimusUrls.problem_set)
@@ -110,7 +134,7 @@ class TimusApi(AcmApi):
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_pages(response.content)
 
-    def get_problem_submits(self, problem_number: int, count: int=1000) -> List[SubmitStatus]:
+    def get_problem_submits(self, problem_number: int, count: int = 1000) -> List[SubmitStatus]:
         query = {'author': 'me', 'count': count, 'num': problem_number}
         url = TimusUrls.status.set_query(query)
         response = self._session.get(url)

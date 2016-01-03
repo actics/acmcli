@@ -2,6 +2,7 @@ import enum
 
 
 class SubmitStatus(object):
+    # TODO(actics): make this abstract (now it timus only support)
     _processing_verdicts = ['Compiling', 'Running', 'Waiting']
     _running_verdict = 'Running'
     _accepted_verdict = 'Accepted'
@@ -19,6 +20,7 @@ class SubmitStatus(object):
         self.runtime = ''
         self.memory = ''
         self.info = ''
+        self.source_file = ''
 
     def set_verdict(self, verdict: str) -> None:
         self.verdict = verdict
