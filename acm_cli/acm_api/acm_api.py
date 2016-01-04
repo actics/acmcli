@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import List, Tuple, Dict
+from typing import List
 
-from .structs import Problem, SubmitStatus, SortType
+from .structs import Problem, SubmitStatus, SortType, Language, ProblemsTag, ProblemsPage
 
 
 class AcmApiError(Exception):
@@ -51,13 +51,13 @@ class AcmApi(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_languages(self) -> Dict[str, str]:
+    def get_languages(self) -> List[Language]:
         pass
 
     @abstractmethod
-    def get_tags(self) -> List[Tuple[str, str]]:
+    def get_tags(self) -> List[ProblemsTag]:
         pass
 
     @abstractmethod
-    def get_pages(self) -> List[Tuple[str, str]]:
+    def get_pages(self) -> List[ProblemsPage]:
         pass

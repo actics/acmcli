@@ -1,12 +1,12 @@
 import urllib.parse
 from enum import Enum
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Union
 
 import requests
 import time
 
 from . import parsers
-from ...acm_api import AcmApi, AcmApiError, Problem, SubmitStatus, SortType
+from ...acm_api import AcmApi, AcmApiError, Problem, SubmitStatus, SortType, Language, ProblemsPage, ProblemsTag
 
 
 _MAX_SUBMIT_ATTEMPTS_TIME = 15
@@ -141,14 +141,14 @@ class TimusApi(AcmApi):
 
         return response.content.decode('utf-8')
 
-    def get_languages(self) -> Dict[str, str]:
+    def get_languages(self) -> List[Language]:
         response = self._session.get(TimusUrls.submit)
         return parsers.parse_languages(response.content)
 
-    def get_tags(self) -> List[Tuple[str, str]]:
+    def get_tags(self) -> List[ProblemsTag]:
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_tags(response.content)
 
-    def get_pages(self) -> List[Tuple[str, str]]:
+    def get_pages(self) -> List[ProblemsPage]:
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_pages(response.content)

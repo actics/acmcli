@@ -2,10 +2,10 @@ import gettext
 import os
 import time
 import getpass
-from typing import Dict, Callable
+from typing import List, Dict, Callable
 
 from .action import Action
-from .acm_api import AcmApi, SubmitStatus
+from .acm_api import AcmApi, SubmitStatus, Language
 from .settings import Settings
 from .simple_progressbar import SimpleProgressBar
 
@@ -44,15 +44,15 @@ class Actions(object):
         action_map[settings.action](api, settings)
 
 
-def _convert_language(language: str, languages: Dict[str, str]) -> str:
+def _convert_language(language: str, languages: List[Language]) -> str:
     # TODO(actics): move to api
-    lang = language.lower()
-    if lang in language_map:
-        lang = language_map[lang]
+    language = language.lower()
+    if language in language_map:
+        language = language_map[language]
 
     for compiler in languages:
-        if lang in compiler.lower():
-            return languages[compiler]
+        if language in compiler.description.lower():
+            return compiler.id
     return None
 
 
@@ -194,17 +194,17 @@ def submit_source_action(api: AcmApi, settings: Settings) -> None:
 
 def languages_action(api: AcmApi, settings: Settings) -> None:
     languages = api.get_languages()
-    for language in sorted(languages):
-        print(language)
+    for language in languages:
+        print(_('language {l.id}: {l.description}').format(l=language))
 
 
 def tags_action(api: AcmApi, settings: Settings) -> None:
     tags = api.get_tags()
     for tag in tags:
-        print(_('tag {0}: {1}').format(tag[0], tag[1]))
+        print(_('tag {t.id}: {t.description}').format(t=tag))
 
 
 def pages_action(api: AcmApi, settings: Settings) -> None:
     pages = api.get_pages()
     for page in pages:
-        print(_('page {0}: {1}').format(page[0], page[1]))
+        print(_('page {p.id}: {p.description}').format(p=page))

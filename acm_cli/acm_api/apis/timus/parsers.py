@@ -1,11 +1,11 @@
 import urllib.parse
 from functools import reduce
-from typing import List, Tuple, Dict
+from typing import List
 
 import lxml.html
 from html2text import html2text
 
-from ...acm_api import SubmitStatus, Problem
+from ...acm_api import SubmitStatus, Problem, Language, ProblemsTag, ProblemsPage
 
 
 def parse_submit_status(html: str) -> SubmitStatus:
@@ -13,15 +13,12 @@ def parse_submit_status(html: str) -> SubmitStatus:
     return _parse_submit_status_element(status_element)
 
 
-def parse_languages(html: str) -> Dict[str, str]:
+def parse_languages(html: str) -> List[Language]:
         tree = lxml.html.fromstring(html)
         select_tag = tree.xpath('//select')[0]
         option_tags = select_tag.xpath('./option')
 
-        languages = dict()
-        for tag in option_tags:
-            languages[tag.text] = tag.attrib['value']
-        return languages
+        return list([Language(tag.attrib['value'], tag.text) for tag in option_tags])
 
 
 def parse_problem(html: str) -> Problem:
@@ -69,26 +66,28 @@ def parse_problem_submits(html: str) -> List[SubmitStatus]:
     return [_parse_submit_status_element(element) for element in status_elements]
 
 
-def parse_tags(html: str) -> List[Tuple[str, str]]:
+def parse_tags(html: str) -> List[ProblemsPage]:
     tree = lxml.html.fromstring(html)
     ps = tree.xpath('//p')[2:]
     tags = list()
     for element in ps[0].xpath('.//a') + ps[1].xpath('.//a'):
+        tag_id = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['tag'][0]
         description = element.text
-        name = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['tag'][0]
-        tags.append((name, description))
+        tag = ProblemsTag(tag_id, description)
+        tags.append(tag)
     return tags
 
 
-def parse_pages(html: str) -> List[Tuple[str, str]]:
+def parse_pages(html: str) -> List[ProblemsPage]:
     tree = lxml.html.fromstring(html)
     ps = tree.xpath('//p')
     pages = list()
     pages_elements = [ps[0].xpath('.//a')[0]] + ps[1].xpath('.//a')[0::2]
     for element in pages_elements:
+        page_id = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['page'][0]
         description = element.text
-        name = urllib.parse.parse_qs(urllib.parse.urlparse(element.attrib['href']).query)['page'][0]
-        pages.append((name, description))
+        page = ProblemsPage(page_id, description)
+        pages.append(page)
     return pages
 
 
