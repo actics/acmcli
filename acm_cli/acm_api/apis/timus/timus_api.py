@@ -1,11 +1,21 @@
 import urllib.parse
 from enum import Enum
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 import requests
+import time
 
 from . import parsers
-from ...acm_api import AcmApi, Problem, SubmitStatus, SortType
+from ...acm_api import AcmApi, AcmApiError, Problem, SubmitStatus, SortType
+
+
+_MAX_SUBMIT_ATTEMPTS_TIME = 15
+_QUERY_WAIT_TIME = 0.3
+
+
+class TimusApiError(AcmApiError):
+    # TODO(actics): find a best way to create errors
+    pass
 
 
 class TimusUrls(Enum):
@@ -24,7 +34,7 @@ class TimusUrls(Enum):
     def __str__(self):
         return self.url
 
-    def set_query(self, query_params: Dict[str, str]) -> str:
+    def set_query(self, query_params: Dict[str, Union[str, int]]) -> str:
         return self.url + '?' + urllib.parse.urlencode(query_params)
 
 
@@ -36,7 +46,7 @@ class TimusApi(AcmApi):
         self._session = requests.Session()
         self._session.cookies.set('Locale', locale)
 
-    def login(self, judge_id, password):
+    def login(self, judge_id: str, password: str) -> None:
         self._judge_id = judge_id
         self._password = password
         payload = {
@@ -46,7 +56,7 @@ class TimusApi(AcmApi):
 
         self._session.post(TimusUrls.auth, payload, allow_redirects=False)
 
-    def login_local(self, judge_id, password, auth_key):
+    def login_local(self, judge_id: str, password: str, auth_key: str) -> None:
         self._judge_id = judge_id
         self._password = password
         self._session.cookies.set('AuthorID', auth_key)
@@ -54,11 +64,7 @@ class TimusApi(AcmApi):
     def get_auth_key(self) -> str:
         return self._session.cookies['AuthorID']
 
-    def get_languages(self):
-        response = self._session.get(TimusUrls.submit)
-        return parsers.parse_languages(response.content)
-
-    def get_compilation_error(self, submit_id):
+    def get_compilation_error(self, submit_id: str) -> str:
         query = {'id': submit_id}
         url = TimusUrls.error.set_query(query)
         response = self._session.get(url)
@@ -70,19 +76,19 @@ class TimusApi(AcmApi):
 
         return response.content.decode('utf-8')
 
-    def get_problem(self, number):
+    def get_problem(self, number: int) -> Problem:
         query = {'num': number}
         url = TimusUrls.problem.set_query(query)
         response = self._session.get(url)
         return parsers.parse_problem(response.content)
 
-    def get_submit_status(self, submit_id):
+    def get_submit_status(self, submit_id: str) -> SubmitStatus:
         query = {'count': 1, 'from': submit_id, 'author': 'me'}
         url = TimusUrls.status.set_query(query)
         response = self._session.get(url)
         return parsers.parse_submit_status(response.content)
 
-    def submit(self, judge_id, language, problem_num, source):
+    def submit(self, judge_id: str, language: str, problem_num: int, source: str) -> str:
         # The break between submissions must be at least 10 seconds
         # if we spend more than once at 10 seconds, Timus return a submit
         # page with error string
@@ -95,11 +101,14 @@ class TimusApi(AcmApi):
             'Source': source,
         }
 
-        response = self._session.post(TimusUrls.submit, payload, allow_redirects=False)
-        if 'x-submitid' not in response.headers:
-            return None
+        start_time = time.time()
+        while (time.time() - start_time) < _MAX_SUBMIT_ATTEMPTS_TIME:
+            response = self._session.post(TimusUrls.submit, payload, allow_redirects=False)
+            if 'x-submitid' in response.headers:
+                return response.headers['x-submitid']
+            time.sleep(_QUERY_WAIT_TIME)
 
-        return response.headers['x-submitid']
+        raise TimusApiError('Can\'t submit problem in {0} seconds. Try again later', _MAX_SUBMIT_ATTEMPTS_TIME)
 
     def get_problem_set(self, page: str = 'all', tag: str = None, sort_type: SortType = SortType.id,
                         show_ac: bool = True) -> List[Problem]:
@@ -107,6 +116,12 @@ class TimusApi(AcmApi):
         url = TimusUrls.problem_set.set_query(query)
         response = self._session.get(url)
         return parsers.parse_problem_set(response.content)
+
+    def get_problem_submits(self, problem_number: int, count: int = 1000) -> List[SubmitStatus]:
+        query = {'author': 'me', 'count': count, 'num': problem_number}
+        url = TimusUrls.status.set_query(query)
+        response = self._session.get(url)
+        return parsers.parse_problem_submits(response.content)
 
     def get_submit_source(self, submit_id: str) -> str:
         status = self.get_submit_status(submit_id)
@@ -126,6 +141,10 @@ class TimusApi(AcmApi):
 
         return response.content.decode('utf-8')
 
+    def get_languages(self) -> Dict[str, str]:
+        response = self._session.get(TimusUrls.submit)
+        return parsers.parse_languages(response.content)
+
     def get_tags(self) -> List[Tuple[str, str]]:
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_tags(response.content)
@@ -133,9 +152,3 @@ class TimusApi(AcmApi):
     def get_pages(self) -> List[Tuple[str, str]]:
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_pages(response.content)
-
-    def get_problem_submits(self, problem_number: int, count: int = 1000) -> List[SubmitStatus]:
-        query = {'author': 'me', 'count': count, 'num': problem_number}
-        url = TimusUrls.status.set_query(query)
-        response = self._session.get(url)
-        return parsers.parse_problem_submits(response.content)

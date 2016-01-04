@@ -4,6 +4,10 @@ from typing import List, Tuple, Dict
 from .structs import Problem, SubmitStatus, SortType
 
 
+class AcmApiError(Exception):
+    pass
+
+
 class AcmApi(metaclass=ABCMeta):
     @abstractmethod
     def login(self, judge_id: str, password: str) -> None:
@@ -30,7 +34,7 @@ class AcmApi(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit(self, judge_id: str, language: str, problem_num: int, source: str) -> SubmitStatus:
+    def submit(self, judge_id: str, language: str, problem_num: int, source: str) -> str:
         pass
 
     @abstractmethod

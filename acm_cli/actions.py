@@ -13,8 +13,8 @@ _ = gettext.gettext
 _n = gettext.ngettext
 double_sep = str(os.linesep + os.linesep)
 
-MAX_SUBMIT_ATTEMPTS_TIME = 15
 QUERY_WAIT_TIME = 0.3
+
 language_map = {
     'c': 'c11',
     'c++': 'c++14',
@@ -89,20 +89,6 @@ def _get_status_string(status: SubmitStatus, delimiter: str= ' @ ') -> str:
     return string
 
 
-def _try_submit(api: AcmApi, source: str, settings: Settings) -> str:
-    languages = api.get_languages()
-    lang = _convert_language(settings.language, languages)
-
-    start_time = time.time()
-    while (time.time() - start_time) < MAX_SUBMIT_ATTEMPTS_TIME:
-        status_id = api.submit(settings.judge_id, lang, settings.problem_number, source)
-        if status_id is not None:
-            return status_id
-        time.sleep(QUERY_WAIT_TIME)
-
-    return None
-
-
 def _process_submit_status(api: AcmApi, bar: SimpleProgressBar, status_id: str) -> None:
     status = api.get_submit_status(status_id)
     status_str = _get_status_string(status)
@@ -135,10 +121,13 @@ def submit_action(api: AcmApi, settings: Settings) -> None:
         # FIXME(actics): print
         raise
 
-    bar.update(_('Please wait. Your submit in process...'))
-    status_id = _try_submit(api, source, settings)
+    languages = api.get_languages()
+    lang = _convert_language(settings.language, languages)
 
-    if status_id is None:
+    bar.update(_('Please wait. Your submit in process...'))
+    try:
+        status_id = api.submit(settings.judge_id, lang, settings.problem_number, source)
+    except AcmApi:
         bar.update(_('Submit failed. Try again later.'))
         return
 
@@ -212,10 +201,10 @@ def languages_action(api: AcmApi, settings: Settings) -> None:
 def tags_action(api: AcmApi, settings: Settings) -> None:
     tags = api.get_tags()
     for tag in tags:
-        print('tag {0}: {1}'.format(tag[0], tag[1]))
+        print(_('tag {0}: {1}').format(tag[0], tag[1]))
 
 
 def pages_action(api: AcmApi, settings: Settings) -> None:
     pages = api.get_pages()
     for page in pages:
-        print('page {0}: {1}'.format(page[0], page[1]))
+        print(_('page {0}: {1}').format(page[0], page[1]))
