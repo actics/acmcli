@@ -76,9 +76,10 @@ class SortType(enum.Enum):
     authors = 'authors'
     difficulty = 'difficulty'
 
+
 class IdWithDescription(object):
-    def __init__(self, id: str, description: str):
-        self.id = id
+    def __init__(self, obj_id: str, description: str):
+        self.id = obj_id
         self.description = description
 
 

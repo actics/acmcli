@@ -226,4 +226,3 @@ def languages_action(api: AcmApi, settings: Settings=None) -> None:
     languages = api.get_languages()
     for language in languages:
         print(_('language {l.id}: {l.description}').format(l=language))
-

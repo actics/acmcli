@@ -1,4 +1,5 @@
 import urllib.parse
+import os.path
 from enum import Enum
 from typing import List, Dict, Union
 
@@ -45,6 +46,9 @@ class TimusApi(AcmApi):
         self._judge_id = None
         self._session = requests.Session()
         self._session.cookies.set('Locale', locale)
+        self._cached_pages = None
+        self._cached_tags = None
+        self._cached_languages = None
 
     def login(self, judge_id: str, password: str) -> None:
         self._judge_id = judge_id
@@ -146,16 +150,28 @@ class TimusApi(AcmApi):
         return response.content.decode('utf-8')
 
     def get_languages(self) -> List[Language]:
+        if self._cached_languages is not None:
+            return self._cached_languages
+
         response = self._session.get(TimusUrls.submit)
-        return parsers.parse_languages(response.content)
+        self._cached_languages = parsers.parse_languages(response.content)
+        return self._cached_languages
 
     def get_tags(self) -> List[ProblemsTag]:
+        if self._cached_tags is not None:
+            return self._cached_tags
+
         response = self._session.get(TimusUrls.problem_set)
-        return parsers.parse_tags(response.content)
+        self._cached_tags = parsers.parse_tags(response.content)
+        return self._cached_tags
+
 
     def get_pages(self) -> List[ProblemsPage]:
+        if self._cached_pages is not None:
+            return self._cached_pages
         response = self._session.get(TimusUrls.problem_set)
-        return parsers.parse_pages(response.content)
+        self._cached_pages = parsers.parse_pages(response.content)
+        return self._cached_pages
 
     def get_tag_by_id(self, tag_id: str) -> ProblemsTag:
         tag_id = tag_id.lower()
