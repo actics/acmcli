@@ -38,10 +38,6 @@ def api_auth(api: AcmApi, settings: Settings) -> None:
         api.login_local(settings.judge_id, settings.password, auth_keys[settings.judge_id])
 
 
-error_msg = 'Can\'t find compilers for language {0}. ' + \
-            'You can use one of this names: {1}'
-
-
 def main() -> None:
     colorama.init()
 

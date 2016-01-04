@@ -110,9 +110,13 @@ class TimusApi(AcmApi):
 
         raise TimusApiError('Can\'t submit problem in {0} seconds. Try again later', _MAX_SUBMIT_ATTEMPTS_TIME)
 
-    def get_problem_set(self, page: str = 'all', tag: str = None, sort_type: SortType = SortType.id,
+    def get_problem_set(self, page: ProblemsPage=None, tag: ProblemsTag=None, sort_type: SortType = SortType.id,
                         show_ac: bool = True) -> List[Problem]:
-        query = {'page': page, 'sort': sort_type.name, 'skipac': not show_ac, 'tag': tag}
+        if page is None:
+            page = ProblemsPage('all', '')
+        if tag is None:
+            tag = ProblemsTag('', '')
+        query = {'page': page.id, 'tag': tag.id, 'sort': sort_type.name, 'skipac': not show_ac}
         url = TimusUrls.problem_set.set_query(query)
         response = self._session.get(url)
         return parsers.parse_problem_set(response.content)
@@ -152,3 +156,19 @@ class TimusApi(AcmApi):
     def get_pages(self) -> List[ProblemsPage]:
         response = self._session.get(TimusUrls.problem_set)
         return parsers.parse_pages(response.content)
+
+    def get_tag_by_id(self, tag_id: str) -> ProblemsTag:
+        tag_id = tag_id.lower()
+        tags = self.get_tags()
+        for tag in tags:
+            if tag_id == tag.id:
+                return tag
+        raise ValueError('Timus don\'t have tag with id {0}'.format(tag_id))
+
+    def get_page_by_id(self, page_id: str) -> ProblemsPage:
+        page_id = page_id.lower()
+        pages = self.get_pages()
+        for page in pages:
+            if page_id == page.id:
+                return page
+        raise ValueError('Timus don\'t have page with id {0}'.format(page_id))

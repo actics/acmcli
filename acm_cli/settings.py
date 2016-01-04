@@ -108,8 +108,8 @@ class Settings(object):
         self.show_tags = False
         self.show_ac = True
         self.sort = None
-        self.tag = None
-        self.page = None
+        self.tag_id = None
+        self.page_id = None
         self.count = None
         self.source_file = ''
 
@@ -146,8 +146,8 @@ class Settings(object):
             settings.count = args.count if args.count is not None else config.submits_count
 
         if settings.action == Action.problem_set:
-            settings.page = args.page if args.page is not None else 'all'
-            settings.tag = args.tag
+            settings.page_id = args.page
+            settings.tag_id = args.tag
             settings.sort = args.sort if args.sort is not None else SortType.id
             settings.judge_id = args.judge_id if args.judge_id is not None else config.judge_id
             settings.show_ac = args.show_ac if args.show_ac is not None else config.show_ac

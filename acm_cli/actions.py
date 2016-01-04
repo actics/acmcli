@@ -1,11 +1,13 @@
+import getpass
 import gettext
 import os
+import sys
 import time
-import getpass
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Tuple
 
+from .page_tag_prompt import PageTagPrompt, pages_action, tags_action
+from .acm_api import AcmApi, SubmitStatus, Language, ProblemsPage, ProblemsTag
 from .action import Action
-from .acm_api import AcmApi, SubmitStatus, Language
 from .settings import Settings
 from .simple_progressbar import SimpleProgressBar
 
@@ -170,8 +172,36 @@ def problem_submits_action(api: AcmApi, settings: Settings) -> None:
         print(_get_status_string(submit))
 
 
+def _get_page_tag(api: AcmApi, settings: Settings) -> Tuple[ProblemsPage, ProblemsTag]:
+    if settings.page_id is None and settings.tag_id is None:
+        prompt = PageTagPrompt(api)
+        try:
+            prompt.cmdloop()
+        except KeyboardInterrupt:
+            print()
+            sys.exit(0)
+        return prompt.page, prompt.tag
+
+    page, tag = None, None
+    if settings.page_id is not None:
+        try:
+            page = api.get_page_by_id(settings.page_id)
+        except ValueError:
+            print(_('Unknown page name "{0}"').format(settings.page_id))
+            sys.exit(1)
+    if settings.tag_id is not None:
+        try:
+            tag = api.get_tag_by_id(settings.tag_id)
+        except ValueError:
+            print(_('Unknown tag name "{0}"').format(settings.tag_id))
+            sys.exit(1)
+    return page, tag
+
+
 def problem_set_action(api: AcmApi, settings: Settings) -> None:
-    problems = api.get_problem_set(settings.page, settings.tag, settings.sort, settings.show_ac)
+    page, tag = _get_page_tag(api, settings)
+
+    problems = api.get_problem_set(page, tag, settings.sort, settings.show_ac)
     max_title_len = max([len(p.title) for p in problems]) + 2
     title_pattern = '{{p.title:<{0}}}'.format(max_title_len)
     for problem in problems:
@@ -181,7 +211,7 @@ def problem_set_action(api: AcmApi, settings: Settings) -> None:
             accepted = '✔' if problem.is_accepted else '-'
         difficulty = _('difficulty: {p.difficulty:<6}').format(p=problem)
         authors = _('authors: {p.rating_length}').format(p=problem)
-        print('[{0:^3}] {p.number}. {1} {2} {3}'.format(accepted, title, difficulty, authors, p=problem))
+        print('[{0:^3}] {1}. {2} {3} {4}'.format(accepted, problem.number, title, difficulty, authors))
 
 
 def submit_source_action(api: AcmApi, settings: Settings) -> None:
@@ -192,19 +222,8 @@ def submit_source_action(api: AcmApi, settings: Settings) -> None:
     print(source)
 
 
-def languages_action(api: AcmApi, settings: Settings) -> None:
+def languages_action(api: AcmApi, settings: Settings=None) -> None:
     languages = api.get_languages()
     for language in languages:
         print(_('language {l.id}: {l.description}').format(l=language))
 
-
-def tags_action(api: AcmApi, settings: Settings) -> None:
-    tags = api.get_tags()
-    for tag in tags:
-        print(_('tag {t.id}: {t.description}').format(t=tag))
-
-
-def pages_action(api: AcmApi, settings: Settings) -> None:
-    pages = api.get_pages()
-    for page in pages:
-        print(_('page {p.id}: {p.description}').format(p=page))

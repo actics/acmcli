@@ -38,7 +38,7 @@ class AcmApi(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_problem_set(self, page: str = 'all', tag: str = None, sort_type: SortType = SortType.id,
+    def get_problem_set(self, page: ProblemsPage=None, tag: ProblemsTag=None, sort_type: SortType = SortType.id,
                         show_ac: bool = True) -> List[Problem]:
         pass
 
@@ -60,4 +60,12 @@ class AcmApi(metaclass=ABCMeta):
 
     @abstractmethod
     def get_pages(self) -> List[ProblemsPage]:
+        pass
+
+    @abstractmethod
+    def get_tag_by_id(self, tag_id: str) -> ProblemsTag:
+        pass
+
+    @abstractmethod
+    def get_page_by_id(self, page_id: str) -> ProblemsPage:
         pass
