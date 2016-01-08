@@ -62,7 +62,7 @@ class Config(object):
         self.show_tags = False
         self.show_ac = True
         self.submits_count = 1000
-        self.default_source_file = os.path.expanduser(_DEFAULT_SOURCE_FILE)
+        self.source_file = os.path.expanduser(_DEFAULT_SOURCE_FILE)
 
     @classmethod
     def read(cls, config_name):
@@ -90,8 +90,8 @@ class Config(object):
             config.show_ac = parser.getboolean(_SECTION, 'show_ac')
         if parser.has_option(_SECTION, 'submits_count'):
             config.show_ac = parser.getint(_SECTION, 'submits_count')
-        if parser.has_option(_SECTION, 'default_source_file'):
-            config.default_source_file = parser.get(_SECTION, 'default_source_file')
+        if parser.has_option(_SECTION, 'source_file'):
+            config.source_file = parser.get(_SECTION, 'source_file')
         return config
 
 
@@ -132,7 +132,7 @@ class Settings(object):
             settings.problem_number = args.problem_number
             settings.judge_id = args.judge_id if args.judge_id is not None else config.judge_id
             settings.language = args.language if args.language is not None else config.language
-            settings.source_file = args.source_file if args.source_file is not None else config.default_source_file
+            settings.source_file = args.source_file if args.source_file is not None else config.source_file
             settings.source_file = os.path.expanduser(settings.source_file)
 
         if settings.action == Action.problem:
